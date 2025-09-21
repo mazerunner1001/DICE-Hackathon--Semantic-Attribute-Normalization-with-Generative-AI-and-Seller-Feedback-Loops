@@ -1,0 +1,110 @@
+<!-- index.html -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Attribute Normalization Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background:#f6f6f8; }
+    .card { background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);}
+    input, textarea { width: 100%; padding: 8px; margin: 6px 0; box-sizing: border-box; }
+    .result { margin-top: 16px; white-space: pre-wrap; font-family: monospace; background:#fff; padding:12px; border-radius:6px;}
+    img.thumb { width:140px; height:140px; object-fit:cover; border-radius:6px; margin-right:10px; }
+    .img-row { display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; }
+    .badge { display:inline-block; background:#e8f3ff; padding:4px 8px; border-radius:12px; margin:4px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Meesho Attribute Normalization — Demo</h2>
+    <p>Upload product images and enter title/description. The prototype returns image- & text-based category scores, color tags and conflict flags.</p>
+
+    <label>Title</label>
+    <input id="title" placeholder="e.g. Elegant maroon saree with golden border" />
+
+    <label>Description</label>
+    <textarea id="desc" rows="3" placeholder="Optional: more details..."></textarea>
+
+    <label>Images</label>
+    <input id="images" type="file" accept="image/*" multiple />
+
+    <button id="submitBtn">Analyze</button>
+
+    <div id="preview" class="img-row"></div>
+
+    <div id="output" class="result"></div>
+  </div>
+
+<script>
+document.getElementById('images').addEventListener('change', (e) => {
+  const preview = document.getElementById('preview');
+  preview.innerHTML = '';
+  for (const file of e.target.files) {
+    const img = document.createElement('img');
+    img.className = 'thumb';
+    img.src = URL.createObjectURL(file);
+    preview.appendChild(img);
+  }
+});
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const title = document.getElementById('title').value || "";
+  const desc = document.getElementById('desc').value || "";
+  const files = document.getElementById('images').files;
+  if (files.length === 0) {
+    alert('Please upload at least one image');
+    return;
+  }
+
+  const form = new FormData();
+  form.append('title', title);
+  form.append('description', desc);
+  for (let i=0;i<files.length;i++){
+    form.append('files', files[i], files[i].name);
+  }
+
+  document.getElementById('output').textContent = 'Analyzing — please wait (model may download first time)...';
+
+  try {
+    const res = await fetch('http://localhost:8000/analyze', {
+      method: 'POST',
+      body: form
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error('Server error: ' + txt);
+    }
+    const json = await res.json();
+    // pretty print; also display per-image badges under preview
+    document.getElementById('output').textContent = JSON.stringify(json, null, 2);
+
+    // show badges under preview for each image
+    const preview = document.getElementById('preview');
+    preview.querySelectorAll('.meta-block')?.forEach(n=>n.remove());
+    json.images.forEach((imgRes, idx) => {
+      const block = document.createElement('div');
+      block.className = 'meta-block';
+      block.style.width = '140px';
+      block.style.fontSize = '12px';
+      block.innerHTML = `<div style="margin-top:6px"><b>${imgRes.filename}</b></div>`;
+      const cat = imgRes.category_scores[0];
+      const catBadge = document.createElement('div');
+      catBadge.className = 'badge';
+      catBadge.textContent = `${cat[0]} (${cat[1].toFixed(2)})`;
+      block.appendChild(catBadge);
+      imgRes.colors.forEach(c => {
+        const cBadge = document.createElement('div');
+        cBadge.className = 'badge';
+        cBadge.textContent = `${c.mapped_color} (${c.confidence.toFixed(2)})`;
+        block.appendChild(cBadge);
+      });
+      preview.appendChild(block);
+    });
+
+  } catch (err) {
+    document.getElementById('output').textContent = 'Error: ' + err.message;
+  }
+});
+</script>
+</body>
+</html>
