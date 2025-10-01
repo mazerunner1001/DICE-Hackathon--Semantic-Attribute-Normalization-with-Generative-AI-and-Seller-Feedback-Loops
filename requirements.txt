@@ -1,0 +1,21 @@
+# Web framework
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+
+# Core ML / DL
+torch>=2.2.0
+torchvision>=0.17.0
+transformers>=4.40.0
+
+# Computer Vision
+opencv-python>=4.9.0
+Pillow>=10.2.0
+scikit-learn>=1.4.0
+
+# Utils
+numpy>=1.26.0
+requests>=2.31.0
+python-multipart>=0.0.9
+
+# Optional (if you want LAB color space support)
+scikit-image>=0.22.0
